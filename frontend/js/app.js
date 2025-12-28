@@ -162,11 +162,6 @@ function displayResults(result) {
   document.getElementById("seasonDescription").textContent =
     result.description.description;
 
-  // Confidence
-  const confidence = result.confidence;
-  document.getElementById("confidenceFill").style.width = `${confidence}%`;
-  document.getElementById("confidenceValue").textContent = `${confidence}%`;
-
   // Season Probability Breakdown
   if (result.season_probabilities) {
     displaySeasonProbabilities(result.season_probabilities, result.season);
