@@ -678,7 +678,7 @@ body {
 }
 
 .draping-color-option.selected {
-    border-color: var(--primary-color);
+    border-color: transparent;
 }
 
 .draping-color-option span {
@@ -715,7 +715,7 @@ body {
 }
 
 .draping-color-option.avoid-option.selected {
-    border-color: #dc2626;
+    border-color: transparent;
 }
 
 /* 2. PALETTE CARDS SECTION */
