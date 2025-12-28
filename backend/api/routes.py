@@ -2,6 +2,7 @@
 FastAPI routes for color analysis endpoints.
 """
 import io
+import base64
 import logging
 import numpy as np
 from PIL import Image
@@ -126,6 +127,20 @@ async def analyze_image(
         image_np = np.array(image_pil)
         logger.info(f"Converted to numpy array. Shape: {image_np.shape}")
 
+        # Generate JPEG preview for frontend (useful for HEIC files browsers can't display)
+        logger.info("Generating JPEG preview...")
+        preview_buffer = io.BytesIO()
+        # Resize for preview (max 800px on longest side)
+        preview_image = image_pil.copy()
+        max_size = 800
+        if max(preview_image.size) > max_size:
+            ratio = max_size / max(preview_image.size)
+            new_size = tuple(int(dim * ratio) for dim in preview_image.size)
+            preview_image = preview_image.resize(new_size, Image.LANCZOS)
+        preview_image.save(preview_buffer, format="JPEG", quality=85)
+        image_preview_base64 = f"data:image/jpeg;base64,{base64.b64encode(preview_buffer.getvalue()).decode('utf-8')}"
+        logger.info(f"Preview generated. Size: {len(image_preview_base64)} chars")
+
     except HTTPException:
         raise
     except Exception as e:
@@ -226,6 +241,7 @@ async def analyze_image(
             variance_confidence=VarianceConfidence(**analysis_result["variance_confidence"]),
             contrast_analysis=ContrastAnalysis(**analysis_result["contrast_analysis"]),
             debug_data=debug_data,
+            image_preview=image_preview_base64,
         )
 
         logger.info("Analysis complete! Returning response.")

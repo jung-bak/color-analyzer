@@ -144,6 +144,7 @@ class AnalysisResult(BaseModel):
     variance_confidence: VarianceConfidence = Field(..., description="Sample variance confidence analysis")
     contrast_analysis: ContrastAnalysis = Field(..., description="Contrast level analysis")
     debug_data: Optional[DebugData] = Field(default=None, description="Debug information (only if debug mode enabled)")
+    image_preview: Optional[str] = Field(default=None, description="Base64-encoded JPEG preview of uploaded image")
 
 
 class ErrorResponse(BaseModel):

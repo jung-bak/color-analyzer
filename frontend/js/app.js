@@ -148,6 +148,11 @@ function displayResults(result) {
   // Store result for later use
   currentResult = result;
 
+  // Update image preview if server provided one (useful for HEIC files)
+  if (result.image_preview) {
+    uploadedImage.src = result.image_preview;
+  }
+
   // Show results section
   resultsSection.style.display = "block";
   resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
