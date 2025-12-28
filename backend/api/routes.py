@@ -79,10 +79,20 @@ async def analyze_image(
         HTTPException: If image is invalid or analysis fails
     """
     # Validate file type
-    if not file.content_type or not file.content_type.startswith("image/"):
+    # HEIC files may have empty content_type or application/octet-stream in some browsers
+    valid_content_types = ["image/jpeg", "image/png", "image/heic", "image/heif"]
+    filename_lower = (file.filename or "").lower()
+    is_heic_extension = filename_lower.endswith(".heic") or filename_lower.endswith(".heif")
+
+    is_valid = (
+        (file.content_type and file.content_type.startswith("image/")) or
+        (is_heic_extension and (not file.content_type or file.content_type == "application/octet-stream"))
+    )
+
+    if not is_valid:
         raise HTTPException(
             status_code=400,
-            detail="Invalid file type. Please upload an image (jpg, jpeg, or png).",
+            detail="Invalid file type. Please upload an image (jpg, jpeg, png, or heic).",
         )
     
     # Read and validate file size
