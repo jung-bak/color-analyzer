@@ -731,22 +731,13 @@ body {
     font-weight: 600;
 }
 
-.draping-avoid-grid .draping-color-option {
-    border: 2px dashed rgba(220, 38, 38, 0.3);
-}
-
 .draping-color-option.avoid-option:hover {
     border-color: #dc2626;
 }
 
 .draping-color-option.avoid-option.selected {
     border-color: #dc2626;
-    border-style: solid;
     box-shadow: 0 0 0 2px #dc2626;
-}
-
-.draping-large-color.avoid-preview {
-    border: 3px dashed #dc2626;
 }
 
 /* 2. PALETTE CARDS SECTION */
