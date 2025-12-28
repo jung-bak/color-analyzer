@@ -64,6 +64,11 @@ class Settings:
     MIN_PIXEL_INTENSITY: int = 30  # Too dark
     MAX_PIXEL_INTENSITY: int = 225  # Too bright
 
+    # Image Processing
+    # Maximum width for images before analysis (reduces memory usage on servers)
+    # 1024px is sufficient for face detection and skin tone analysis
+    PROCESS_IMAGE_MAX_WIDTH: int = int(os.getenv("PROCESS_IMAGE_MAX_WIDTH", 1024))
+
 
 settings = Settings()
 

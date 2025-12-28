@@ -137,6 +137,14 @@ async def analyze_image(
             except Exception as e:
                 logger.warning(f"ICC profile conversion failed, using original: {e}")
 
+        # Resize large images to reduce memory usage (important for HEIC 12MP+ images)
+        original_size = image_pil.size
+        if image_pil.width > settings.PROCESS_IMAGE_MAX_WIDTH:
+            ratio = settings.PROCESS_IMAGE_MAX_WIDTH / image_pil.width
+            new_size = (settings.PROCESS_IMAGE_MAX_WIDTH, int(image_pil.height * ratio))
+            logger.info(f"Resizing image from {original_size} to {new_size} for analysis")
+            image_pil = image_pil.resize(new_size, Image.LANCZOS)
+
         # Convert to numpy array
         image_np = np.array(image_pil)
         logger.info(f"Converted to numpy array. Shape: {image_np.shape}")
