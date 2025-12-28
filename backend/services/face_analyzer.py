@@ -3,7 +3,6 @@ Face analysis using MediaPipe Face Mesh for landmark detection and skin tone ext
 """
 import cv2
 import numpy as np
-import base64
 from datetime import datetime
 from typing import Tuple, Optional, Dict, Any, List
 
@@ -17,6 +16,7 @@ from backend.core.palettes import (
     RIGHT_EYEBROW_LANDMARKS,
 )
 from backend.services.color_processor import color_processor
+from backend.services.visualization import visualization_service
 
 # MediaPipe import - lazy load
 _face_mesh = None
@@ -76,7 +76,7 @@ class FaceAnalyzer:
                 "step": "original",
                 "title": "Original Image",
                 "description": "Uploaded image before any processing",
-                "image_base64": self._encode_image_base64(image),
+                "image_base64": visualization_service.encode_image_base64(image),
                 "metadata": {"dimensions": f"{image.shape[1]}x{image.shape[0]}"}
             })
         
@@ -109,12 +109,12 @@ class FaceAnalyzer:
         
         # Debug: Draw face landmarks
         if debug:
-            landmarks_image = self._draw_face_landmarks(image, face_landmarks)
+            landmarks_image = visualization_service.draw_face_landmarks(image, face_landmarks)
             debug_images.append({
                 "step": "face_mesh",
                 "title": "Face Mesh Detection",
                 "description": f"468 facial landmarks detected. Green dots highlight cheek region ({len(CHEEK_LANDMARKS)} landmarks).",
-                "image_base64": self._encode_image_base64(landmarks_image),
+                "image_base64": visualization_service.encode_image_base64(landmarks_image),
                 "metadata": {
                     "total_landmarks": len(face_landmarks.landmark),
                     "cheek_landmarks": CHEEK_LANDMARKS
@@ -143,14 +143,14 @@ class FaceAnalyzer:
         
         # Debug: White balance comparison
         if debug and apply_white_balance:
-            comparison_image = self._create_comparison_image(
+            comparison_image = visualization_service.create_comparison_image(
                 image, processed_image, "Before WB", "After WB"
             )
             debug_images.append({
                 "step": "white_balance",
                 "title": "White Balance Correction",
                 "description": f"Method: {wb_method}. Side-by-side comparison showing color correction effect.",
-                "image_base64": self._encode_image_base64(comparison_image),
+                "image_base64": visualization_service.encode_image_base64(comparison_image),
                 "metadata": wb_metadata
             })
             debug_metadata["white_balance"] = {
@@ -191,7 +191,7 @@ class FaceAnalyzer:
                 cv2.fillConvexPoly(cheek_mask, hull, 255)
                 
                 # Create visualization with mask overlay
-                mask_viz = self._visualize_mask(processed_image, cheek_mask, color=(0, 255, 0), alpha=0.4)
+                mask_viz = visualization_service.visualize_mask(processed_image, cheek_mask, color=(0, 255, 0), alpha=0.4)
                 
                 # Calculate statistics
                 cheek_pixels = processed_image[cheek_mask == 255]
@@ -205,7 +205,7 @@ class FaceAnalyzer:
                     "step": "cheek_mask",
                     "title": "Skin Extraction Mask",
                     "description": f"Green overlay shows the {pixel_count:,} pixels ({coverage_pct:.2f}% of image) used for color analysis.",
-                    "image_base64": self._encode_image_base64(mask_viz),
+                    "image_base64": visualization_service.encode_image_base64(mask_viz),
                     "metadata": {
                         "landmark_indices": CHEEK_LANDMARKS,
                         "pixel_count": pixel_count,
@@ -241,7 +241,7 @@ class FaceAnalyzer:
         if debug:
             # Debug: Multi-region sampling visualization
             if multi_region_result.get("region_colors"):
-                multi_region_viz = self._visualize_multi_regions(
+                multi_region_viz = visualization_service.visualize_multi_regions(
                     processed_image, face_landmarks, multi_region_result
                 )
                 if multi_region_viz is not None:
@@ -249,7 +249,7 @@ class FaceAnalyzer:
                         "step": "multi_region",
                         "title": "Multi-Region Sampling",
                         "description": f"Sampled {multi_region_result['regions_sampled']} regions. Agreement: {multi_region_result['agreement_score']*100:.1f}%. Status: {multi_region_result['status']}",
-                        "image_base64": self._encode_image_base64(multi_region_viz),
+                        "image_base64": visualization_service.encode_image_base64(multi_region_viz),
                         "metadata": multi_region_result
                     })
             
@@ -259,19 +259,19 @@ class FaceAnalyzer:
                     "step": "variance_analysis",
                     "title": "Sample Quality Analysis",
                     "description": f"Pixel variance: {variance_confidence['variance']:.1f}. Quality: {variance_confidence['status']}. Confidence: {variance_confidence['confidence_factor']:+.1f}%",
-                    "image_base64": self._encode_image_base64(processed_image),  # Could add viz overlay
+                    "image_base64": visualization_service.encode_image_base64(processed_image),  # Could add viz overlay
                     "metadata": variance_confidence
                 })
             
             # Debug: Contrast visualization
             if contrast_result.get("status") == "success":
-                contrast_viz = self._visualize_contrast(processed_image, face_landmarks, contrast_result)
+                contrast_viz = visualization_service.visualize_contrast(processed_image, face_landmarks, contrast_result)
                 if contrast_viz is not None:
                     debug_images.append({
                         "step": "contrast_analysis",
                         "title": "Contrast Level Analysis",
                         "description": f"Contrast: {contrast_result['contrast_level']:.1f} ({contrast_result['level_category']}). Expected: {', '.join(contrast_result['expected_seasons'])}",
-                        "image_base64": self._encode_image_base64(contrast_viz),
+                        "image_base64": visualization_service.encode_image_base64(contrast_viz),
                         "metadata": contrast_result
                     })
         
@@ -632,305 +632,7 @@ class FaceAnalyzer:
             return 0
         
         return len(results.multi_face_landmarks)
-    
-    def _encode_image_base64(self, image: np.ndarray, max_width: int = 1024) -> str:
-        """
-        Encode image as base64 JPEG string.
-        
-        Args:
-            image: Input image in RGB format
-            max_width: Maximum width for resizing (to keep response size manageable)
-        
-        Returns:
-            Base64-encoded JPEG string with data URI prefix
-        """
-        # Resize if too large
-        h, w = image.shape[:2]
-        if w > max_width:
-            scale = max_width / w
-            new_w = max_width
-            new_h = int(h * scale)
-            image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
-        
-        # Convert RGB to BGR for OpenCV
-        image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        
-        # Encode as JPEG
-        success, buffer = cv2.imencode('.jpg', image_bgr, [cv2.IMWRITE_JPEG_QUALITY, 85])
-        if not success:
-            return ""
-        
-        # Convert to base64
-        jpg_as_text = base64.b64encode(buffer).decode('utf-8')
-        return f"data:image/jpeg;base64,{jpg_as_text}"
-    
-    def _draw_face_landmarks(self, image: np.ndarray, face_landmarks: Any) -> np.ndarray:
-        """
-        Draw all face mesh landmarks on image.
-        
-        Args:
-            image: Input image in RGB format
-            face_landmarks: MediaPipe face landmarks
-        
-        Returns:
-            Image with landmarks drawn
-        """
-        import mediapipe as mp
-        
-        # Create a copy to draw on
-        annotated_image = image.copy()
-        h, w = image.shape[:2]
-        
-        # Draw all landmarks
-        for idx, landmark in enumerate(face_landmarks.landmark):
-            x = int(landmark.x * w)
-            y = int(landmark.y * h)
-            
-            # Draw landmark point
-            color = (0, 255, 0) if idx in CHEEK_LANDMARKS else (100, 100, 255)
-            cv2.circle(annotated_image, (x, y), 2, color, -1)
-            
-            # Optionally label cheek landmarks
-            if idx in CHEEK_LANDMARKS:
-                cv2.putText(annotated_image, str(idx), (x + 3, y - 3),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)
-        
-        return annotated_image
-    
-    def _visualize_mask(self, image: np.ndarray, mask: np.ndarray, 
-                       color: Tuple[int, int, int] = (0, 255, 0),
-                       alpha: float = 0.5) -> np.ndarray:
-        """
-        Create colored overlay showing masked regions.
-        
-        Args:
-            image: Input image in RGB format
-            mask: Binary mask (255 = masked region, 0 = background)
-            color: RGB color for overlay
-            alpha: Transparency (0-1)
-        
-        Returns:
-            Image with colored overlay
-        """
-        overlay = image.copy()
-        
-        # Create colored mask
-        colored_mask = np.zeros_like(image)
-        colored_mask[mask == 255] = color
-        
-        # Blend with original image
-        result = cv2.addWeighted(overlay, 1 - alpha, colored_mask, alpha, 0)
-        
-        # Draw outline
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cv2.drawContours(result, contours, -1, color, 2)
-        
-        return result
-    
-    def _create_comparison_image(self, image1: np.ndarray, image2: np.ndarray,
-                                label1: str = "Before", label2: str = "After") -> np.ndarray:
-        """
-        Create side-by-side comparison image.
-        
-        Args:
-            image1: First image
-            image2: Second image
-            label1: Label for first image
-            label2: Label for second image
-        
-        Returns:
-            Combined comparison image
-        """
-        # Ensure both images have same height
-        h1, w1 = image1.shape[:2]
-        h2, w2 = image2.shape[:2]
-        
-        if h1 != h2:
-            # Resize to match heights
-            target_h = min(h1, h2)
-            image1 = cv2.resize(image1, (int(w1 * target_h / h1), target_h))
-            image2 = cv2.resize(image2, (int(w2 * target_h / h2), target_h))
-        
-        # Add labels
-        labeled1 = image1.copy()
-        labeled2 = image2.copy()
-        
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 1.0
-        thickness = 2
-        color = (255, 255, 255)
-        outline_color = (0, 0, 0)
-        
-        # Add label to first image
-        (text_w, text_h), _ = cv2.getTextSize(label1, font, font_scale, thickness)
-        x1 = 10
-        y1 = 40
-        cv2.putText(labeled1, label1, (x1, y1), font, font_scale, outline_color, thickness + 2)
-        cv2.putText(labeled1, label1, (x1, y1), font, font_scale, color, thickness)
-        
-        # Add label to second image
-        (text_w, text_h), _ = cv2.getTextSize(label2, font, font_scale, thickness)
-        x2 = 10
-        y2 = 40
-        cv2.putText(labeled2, label2, (x2, y2), font, font_scale, outline_color, thickness + 2)
-        cv2.putText(labeled2, label2, (x2, y2), font, font_scale, color, thickness)
-        
-        # Concatenate horizontally
-        comparison = np.hstack([labeled1, labeled2])
-        
-        return comparison
-    
-    def _visualize_multi_regions(
-        self,
-        image: np.ndarray,
-        face_landmarks: Any,
-        multi_region_result: Dict[str, Any]
-    ) -> Optional[np.ndarray]:
-        """
-        Create visualization showing all sampled regions with color labels.
-        
-        Args:
-            image: Input image in RGB format
-            face_landmarks: MediaPipe face landmarks
-            multi_region_result: Results from multi-region analysis
-        
-        Returns:
-            Annotated image or None
-        """
-        if "region_colors" not in multi_region_result:
-            return None
-        
-        viz = image.copy()
-        h, w = image.shape[:2]
-        
-        region_landmarks = {
-            "cheeks": CHEEK_LANDMARKS,
-            "forehead": FOREHEAD_LANDMARKS,
-            "nose_bridge": NOSE_BRIDGE_LANDMARKS,
-            "chin": CHIN_LANDMARKS,
-        }
-        
-        colors = {
-            "cheeks": (255, 100, 100),      # Red
-            "forehead": (100, 255, 100),    # Green
-            "nose_bridge": (100, 100, 255), # Blue
-            "chin": (255, 255, 100),        # Yellow
-        }
-        
-        # Draw each region
-        for region_name, landmarks in region_landmarks.items():
-            if region_name in multi_region_result["region_colors"]:
-                # Create mask for this region
-                mask = np.zeros((h, w), dtype=np.uint8)
-                points = []
-                for idx in landmarks:
-                    if idx < len(face_landmarks.landmark):
-                        landmark = face_landmarks.landmark[idx]
-                        x = int(landmark.x * w)
-                        y = int(landmark.y * h)
-                        points.append((x, y))
-                
-                if len(points) >= 3:
-                    points_array = np.array(points, dtype=np.int32)
-                    hull = cv2.convexHull(points_array)
-                    cv2.fillConvexPoly(mask, hull, 255)
-                    
-                    # Draw colored overlay
-                    overlay = np.zeros_like(viz)
-                    overlay[mask == 255] = colors[region_name]
-                    viz = cv2.addWeighted(viz, 0.7, overlay, 0.3, 0)
-                    
-                    # Draw outline
-                    cv2.drawContours(viz, [hull], 0, colors[region_name], 2)
-                    
-                    # Add label with RGB value
-                    rgb = multi_region_result["region_colors"][region_name]
-                    centroid = np.mean(points, axis=0).astype(int)
-                    label = f"{region_name[:4]}: {rgb}"
-                    cv2.putText(viz, label, tuple(centroid), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 2)
-                    cv2.putText(viz, label, tuple(centroid), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.4, colors[region_name], 1)
-        
-        return viz
-    
-    def _visualize_contrast(
-        self,
-        image: np.ndarray,
-        face_landmarks: Any,
-        contrast_result: Dict[str, Any]
-    ) -> Optional[np.ndarray]:
-        """
-        Create visualization showing eyebrow and skin regions with contrast info.
-        
-        Args:
-            image: Input image in RGB format
-            face_landmarks: MediaPipe face landmarks
-            contrast_result: Results from contrast analysis
-        
-        Returns:
-            Annotated image or None
-        """
-        viz = image.copy()
-        h, w = image.shape[:2]
-        
-        # Draw eyebrow regions (blue)
-        for eyebrow_landmarks in [LEFT_EYEBROW_LANDMARKS, RIGHT_EYEBROW_LANDMARKS]:
-            mask = np.zeros((h, w), dtype=np.uint8)
-            points = []
-            for idx in eyebrow_landmarks:
-                if idx < len(face_landmarks.landmark):
-                    landmark = face_landmarks.landmark[idx]
-                    x = int(landmark.x * w)
-                    y = int(landmark.y * h)
-                    points.append((x, y))
-            
-            if len(points) >= 3:
-                points_array = np.array(points, dtype=np.int32)
-                hull = cv2.convexHull(points_array)
-                overlay = np.zeros_like(viz)
-                cv2.fillConvexPoly(mask, hull, 255)
-                overlay[mask == 255] = (100, 100, 255)  # Blue
-                viz = cv2.addWeighted(viz, 0.7, overlay, 0.3, 0)
-                cv2.drawContours(viz, [hull], 0, (100, 100, 255), 2)
-        
-        # Draw cheek region (green)
-        mask = np.zeros((h, w), dtype=np.uint8)
-        points = []
-        for idx in CHEEK_LANDMARKS:
-            if idx < len(face_landmarks.landmark):
-                landmark = face_landmarks.landmark[idx]
-                x = int(landmark.x * w)
-                y = int(landmark.y * h)
-                points.append((x, y))
-        
-        if len(points) >= 3:
-            points_array = np.array(points, dtype=np.int32)
-            hull = cv2.convexHull(points_array)
-            overlay = np.zeros_like(viz)
-            cv2.fillConvexPoly(mask, hull, 255)
-            overlay[mask == 255] = (100, 255, 100)  # Green
-            viz = cv2.addWeighted(viz, 0.7, overlay, 0.3, 0)
-            cv2.drawContours(viz, [hull], 0, (100, 255, 100), 2)
-        
-        # Add text annotation
-        contrast_level = contrast_result.get("contrast_level", 0)
-        level_category = contrast_result.get("level_category", "unknown")
-        text = f"Contrast: {contrast_level:.1f} ({level_category})"
-        
-        # Position text at top center
-        text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)[0]
-        text_x = (w - text_size[0]) // 2
-        text_y = 40
-        
-        # Draw text with outline
-        cv2.putText(viz, text, (text_x, text_y), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 4)
-        cv2.putText(viz, text, (text_x, text_y), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-        
-        return viz
-    
+
     def __del__(self):
         """Cleanup resources."""
         global _face_mesh

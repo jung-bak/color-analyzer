@@ -2,8 +2,7 @@
 
 An intelligent web application that analyzes face photos to determine your seasonal color palette using computer vision and color theory. Built with FastAPI, MediaPipe, and vanilla JavaScript.
 
-> 🚀 **Now using `uv`** - the blazingly fast Python package installer (10-100x faster than pip!)  
-> See [UV_BENEFITS.md](UV_BENEFITS.md) for details.
+> 🚀 **Now using `uv`** - the blazingly fast Python package installer (10-100x faster than pip!)
 
 ## ✨ Features
 
@@ -286,28 +285,53 @@ The four seasons each have distinct characteristics:
 
 ## 🔧 Troubleshooting
 
-### "No face detected" Error
+### Analysis Errors
+
+**"No face detected"**
 - Ensure face is clearly visible and well-lit
 - Face the camera directly
 - Remove any obstructions (sunglasses, masks, etc.)
 
-### "Multiple faces detected" Error
+**"Multiple faces detected"**
 - Use a photo with only one person
 - Crop the image to show only your face
 
-### "Photo is too dark/bright" Error
+**"Photo is too dark/bright"**
 - Retake photo with better lighting
 - Avoid direct sunlight or very dim environments
 
-### White Balance Method Shows "None"
+**White Balance Method Shows "None"**
 - This happens if white balance is disabled
 - Enable the white balance toggle before uploading
+
+### Development Errors
+
+**"Module not found"**
+```bash
+uv sync
+```
+
+**"Port 8000 already in use"**
+```bash
+uv run uvicorn backend.main:app --reload --port 8001
+```
+
+**Application won't start**
+```bash
+cd color_analyzer
+uv run python -c "import backend.main"
+```
+
+**Python version error**
+```bash
+python --version  # Requires 3.9+
+uv python install 3.11
+uv python pin 3.11
+```
 
 ## 📦 Dependencies
 
 This project uses **uv** for blazingly fast dependency management (10-100x faster than pip!).
-
-See [UV_BENEFITS.md](UV_BENEFITS.md) for why we use uv and how it works.
 
 Main dependencies:
 - **FastAPI**: Modern web framework for building APIs
