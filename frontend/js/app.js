@@ -54,7 +54,7 @@ function handleFileSelect(event) {
   }
 }
 
-function handleFile(file) {
+async function handleFile(file) {
   // Validate file type
   // Note: HEIC files may have empty or "application/octet-stream" type in some browsers
   const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/heic", "image/heif"];
@@ -77,25 +77,51 @@ function handleFile(file) {
     return;
   }
 
-  selectedFile = file;
-
-  // Show image preview
-  // Note: HEIC files cannot be previewed in most browsers, show placeholder instead
+  // Check if HEIC file needs conversion
   const isHeic = fileExtension === ".heic" || fileExtension === ".heif";
 
+  let fileToUse = file;
+
   if (isHeic) {
-    // Use a placeholder for HEIC files since browsers can't display them
-    uploadedImage.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect fill='%23f3f4f6' width='300' height='300'/%3E%3Ctext x='150' y='140' text-anchor='middle' fill='%236b7280' font-family='system-ui' font-size='16'%3EHEIC Image%3C/text%3E%3Ctext x='150' y='165' text-anchor='middle' fill='%239ca3af' font-family='system-ui' font-size='12'%3EPreview not available%3C/text%3E%3C/svg%3E";
-  } else {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      uploadedImage.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+    // Show loading state while converting
+    showLoading();
+
+    try {
+      // Convert HEIC to JPEG using heic2any
+      const convertedBlob = await heic2any({
+        blob: file,
+        toType: "image/jpeg",
+        quality: 0.9
+      });
+
+      // Create a new File object from the converted blob
+      const convertedFile = new File(
+        [convertedBlob],
+        file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg"),
+        { type: "image/jpeg" }
+      );
+
+      fileToUse = convertedFile;
+      hideLoading();
+    } catch (error) {
+      hideLoading();
+      console.error("HEIC conversion error:", error);
+      showError("Failed to process HEIC image. Please try converting it to JPEG first.");
+      return;
+    }
   }
 
+  selectedFile = fileToUse;
+
+  // Show image preview (now works for converted HEIC too)
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    uploadedImage.src = e.target.result;
+  };
+  reader.readAsDataURL(fileToUse);
+
   // Upload and analyze
-  uploadAndAnalyze(file);
+  uploadAndAnalyze(fileToUse);
 }
 
 // Upload and Analyze Image
