@@ -56,9 +56,17 @@ function handleFileSelect(event) {
 
 function handleFile(file) {
   // Validate file type
-  const validTypes = ["image/jpeg", "image/jpg", "image/png"];
-  if (!validTypes.includes(file.type)) {
-    showError("Invalid file type. Please upload a JPG, JPEG, or PNG image.");
+  // Note: HEIC files may have empty or "application/octet-stream" type in some browsers
+  const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/heic", "image/heif"];
+  const validExtensions = [".jpg", ".jpeg", ".png", ".heic", ".heif"];
+  const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf("."));
+
+  const isValidType = validTypes.includes(file.type) ||
+                      validExtensions.includes(fileExtension) ||
+                      (file.type === "" && validExtensions.includes(fileExtension));
+
+  if (!isValidType) {
+    showError("Invalid file type. Please upload a JPG, JPEG, PNG, or HEIC image.");
     return;
   }
 
@@ -72,11 +80,19 @@ function handleFile(file) {
   selectedFile = file;
 
   // Show image preview
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    uploadedImage.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
+  // Note: HEIC files cannot be previewed in most browsers, show placeholder instead
+  const isHeic = fileExtension === ".heic" || fileExtension === ".heif";
+
+  if (isHeic) {
+    // Use a placeholder for HEIC files since browsers can't display them
+    uploadedImage.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect fill='%23f3f4f6' width='300' height='300'/%3E%3Ctext x='150' y='140' text-anchor='middle' fill='%236b7280' font-family='system-ui' font-size='16'%3EHEIC Image%3C/text%3E%3Ctext x='150' y='165' text-anchor='middle' fill='%239ca3af' font-family='system-ui' font-size='12'%3EPreview not available%3C/text%3E%3C/svg%3E";
+  } else {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      uploadedImage.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
 
   // Upload and analyze
   uploadAndAnalyze(file);

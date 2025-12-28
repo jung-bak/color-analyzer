@@ -5,6 +5,10 @@ import io
 import numpy as np
 from PIL import Image
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query
+
+# Register HEIC/HEIF support with Pillow
+import pillow_heif
+pillow_heif.register_heif_opener()
 from fastapi.responses import JSONResponse
 
 from backend.models.schemas import (
