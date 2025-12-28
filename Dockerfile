@@ -30,6 +30,9 @@ EXPOSE 8000
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8000
+# Disable iris tracking by default for headless/CPU-only environments (Render, etc.)
+# This prevents MediaPipe from attempting OpenGL/EGL initialization which fails on servers
+ENV DISABLE_IRIS_TRACKING=true
 
 # Run the application
 CMD ["uv", "run", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

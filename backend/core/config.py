@@ -28,7 +28,13 @@ class Settings:
     
     # MediaPipe Configuration
     FACE_MESH_MAX_FACES: int = 1
-    FACE_MESH_REFINE_LANDMARKS: bool = True
+    # Refine landmarks enables iris tracking but requires OpenGL/GPU
+    # Disable on headless servers (Render, etc.) by setting DISABLE_IRIS_TRACKING=true
+    # or RENDER=true environment variable
+    FACE_MESH_REFINE_LANDMARKS: bool = not (
+        os.getenv("DISABLE_IRIS_TRACKING", "false").lower() == "true" or
+        os.getenv("RENDER", "false").lower() == "true"
+    )
     FACE_MESH_MIN_DETECTION_CONFIDENCE: float = 0.5
     FACE_MESH_MIN_TRACKING_CONFIDENCE: float = 0.5
     
