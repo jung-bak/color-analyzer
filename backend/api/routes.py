@@ -2,13 +2,18 @@
 FastAPI routes for color analysis endpoints.
 """
 import io
+import logging
 import numpy as np
 from PIL import Image
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 
+# Set up logging
+logger = logging.getLogger(__name__)
+
 # Register HEIC/HEIF support with Pillow
 import pillow_heif
 pillow_heif.register_heif_opener()
+logger.info("pillow_heif registered successfully")
 from fastapi.responses import JSONResponse
 
 from backend.models.schemas import (
@@ -97,25 +102,34 @@ async def analyze_image(
     
     # Read and validate file size
     try:
+        logger.info(f"Processing file: {file.filename}, content_type: {file.content_type}")
         contents = await file.read()
-        
+        logger.info(f"File size: {len(contents)} bytes")
+
         if len(contents) > settings.MAX_UPLOAD_SIZE:
             raise HTTPException(
                 status_code=400,
                 detail=f"File too large. Maximum size is {settings.MAX_UPLOAD_SIZE / 1024 / 1024:.1f}MB.",
             )
-        
-        # Open image with PIL
+
+        # Open image with PIL (pillow_heif handles HEIC automatically)
+        logger.info("Opening image with PIL...")
         image_pil = Image.open(io.BytesIO(contents))
-        
+        logger.info(f"Image opened successfully. Mode: {image_pil.mode}, Size: {image_pil.size}")
+
         # Convert to RGB if necessary
         if image_pil.mode != "RGB":
+            logger.info(f"Converting from {image_pil.mode} to RGB...")
             image_pil = image_pil.convert("RGB")
-        
+
         # Convert to numpy array
         image_np = np.array(image_pil)
-        
+        logger.info(f"Converted to numpy array. Shape: {image_np.shape}")
+
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.exception(f"Failed to process image: {e}")
         raise HTTPException(
             status_code=400,
             detail=f"Failed to process image: {str(e)}",
