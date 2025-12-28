@@ -711,7 +711,7 @@ body {
 }
 
 .draping-color-option.avoid-option:hover {
-    border-color: #dc2626;
+    border-color: transparent;
 }
 
 .draping-color-option.avoid-option.selected {
