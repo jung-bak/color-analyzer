@@ -5,8 +5,11 @@ import io
 import base64
 import logging
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageCms
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query
+
+# Create sRGB profile for color space normalization
+srgb_profile = ImageCms.createProfile("sRGB")
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -122,6 +125,17 @@ async def analyze_image(
         if image_pil.mode != "RGB":
             logger.info(f"Converting from {image_pil.mode} to RGB...")
             image_pil = image_pil.convert("RGB")
+
+        # Normalize color space to sRGB (important for HEIC files which may use Display P3)
+        icc_profile = image_pil.info.get("icc_profile")
+        if icc_profile:
+            try:
+                logger.info("Found ICC profile, converting to sRGB...")
+                input_profile = ImageCms.ImageCmsProfile(io.BytesIO(icc_profile))
+                image_pil = ImageCms.profileToProfile(image_pil, input_profile, srgb_profile)
+                logger.info("Color space converted to sRGB")
+            except Exception as e:
+                logger.warning(f"ICC profile conversion failed, using original: {e}")
 
         # Convert to numpy array
         image_np = np.array(image_pil)
