@@ -137,37 +137,48 @@ async def analyze_image(
     
     # Analyze the image
     try:
+        logger.info("Starting face analysis...")
         analysis_result = face_analyzer.analyze_image(
             image_np,
             apply_white_balance=white_balance,
             debug=debug,
         )
-        
+        logger.info(f"Face analysis complete. Success: {analysis_result.get('success')}")
+
         if not analysis_result["success"]:
+            logger.warning(f"Face analysis failed: {analysis_result.get('error')}")
             raise HTTPException(
                 status_code=400,
                 detail=analysis_result["error"],
             )
-        
+
+        logger.info(f"LAB values: {analysis_result.get('lab_values')}")
+        logger.info(f"RGB color: {analysis_result.get('rgb_color')}")
+
         # Classify season with confidence factors
+        logger.info("Classifying season...")
         classification = season_classifier.classify(
             analysis_result["lab_values"],
             multi_region_analysis=analysis_result.get("multi_region_analysis"),
             variance_confidence=analysis_result.get("variance_confidence"),
             contrast_analysis=analysis_result.get("contrast_analysis"),
         )
-        
+        logger.info(f"Season classified: {classification.get('season')} with confidence {classification.get('confidence')}%")
+
         # Get color zones for the detected season
+        logger.info("Getting color zones...")
         zones = get_season_color_zones(classification["season"])
-        
+
         # Get structured color visualization data
+        logger.info("Getting color categories...")
         color_categories = get_season_color_categories(classification["season"])
         do_dont_pairs = get_season_do_dont_pairs(classification["season"])
         color_gradients = get_season_color_gradients(classification["season"])
-        
+
         # Build debug data if debug mode is enabled
         debug_data = None
         if debug and "debug_images" in analysis_result:
+            logger.info("Building debug data...")
             # Add color analysis metadata to debug metadata
             if "debug_metadata" in analysis_result:
                 analysis_result["debug_metadata"]["color_analysis"] = {
@@ -183,13 +194,14 @@ async def analyze_image(
                     "confidence_breakdown": classification.get("confidence_breakdown", {}),
                     "season_probabilities": classification.get("season_probabilities", {}),
                 }
-            
+
             debug_data = DebugData(
                 images=[DebugImage(**img) for img in analysis_result["debug_images"]],
                 metadata=DebugMetadata(**analysis_result.get("debug_metadata", {})),
             )
-        
+
         # Build response
+        logger.info("Building response...")
         response = AnalysisResult(
             season=classification["season"],
             full_season_name=classification["full_season_name"],
@@ -215,12 +227,14 @@ async def analyze_image(
             contrast_analysis=ContrastAnalysis(**analysis_result["contrast_analysis"]),
             debug_data=debug_data,
         )
-        
+
+        logger.info("Analysis complete! Returning response.")
         return response
-        
+
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception(f"Analysis failed with exception: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Analysis failed: {str(e)}",
