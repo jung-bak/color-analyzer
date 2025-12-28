@@ -150,11 +150,21 @@
                                 <span id="drapingColorName">Select a color</span>
                             </div>
                         </div>
-                        <!-- Color selector -->
-                        <div class="draping-selector">
-                            <p class="selector-label">Click a color to compare:</p>
-                            <div class="draping-color-grid" id="drapingColorGrid">
-                                <!-- Populated by JavaScript -->
+                        <!-- Color selectors -->
+                        <div class="draping-selectors">
+                            <!-- Recommended Colors -->
+                            <div class="draping-selector">
+                                <p class="selector-label selector-recommended">✓ Recommended Colors</p>
+                                <div class="draping-color-grid" id="drapingColorGrid">
+                                    <!-- Populated by JavaScript -->
+                                </div>
+                            </div>
+                            <!-- Avoid Colors -->
+                            <div class="draping-selector">
+                                <p class="selector-label selector-avoid">✗ Colors to Avoid</p>
+                                <div class="draping-color-grid draping-avoid-grid" id="drapingAvoidGrid">
+                                    <!-- Populated by JavaScript -->
+                                </div>
                             </div>
                         </div>
                     </div>

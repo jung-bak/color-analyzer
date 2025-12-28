@@ -649,20 +649,25 @@ function renderDrapingSimulation(skinToneRgb, colorCategories) {
   const largeColor = document.getElementById("drapingLargeColor");
   const colorName = document.getElementById("drapingColorName");
 
-  // Build the color grid from all colors (neutrals + accents)
-  const colorGrid = document.getElementById("drapingColorGrid");
-  colorGrid.innerHTML = "";
+  // Get both grids
+  const recommendedGrid = document.getElementById("drapingColorGrid");
+  const avoidGrid = document.getElementById("drapingAvoidGrid");
+  recommendedGrid.innerHTML = "";
+  avoidGrid.innerHTML = "";
 
-  const allColors = [
+  // Prepare color arrays
+  const recommendedColors = [
     ...(colorCategories.neutrals || []),
     ...(colorCategories.accents || []),
   ];
+  const avoidColors = colorCategories.avoid || [];
 
   let selectedOption = null;
 
-  allColors.forEach((color, index) => {
+  // Helper function to create a color option element
+  function createColorOption(color, isAvoid = false) {
     const option = document.createElement("div");
-    option.className = "draping-color-option";
+    option.className = "draping-color-option" + (isAvoid ? " avoid-option" : "");
     option.style.backgroundColor = color.hex;
     option.innerHTML = `<span>${color.name}</span>`;
     option.title = `${color.name} - ${color.hex}`;
@@ -670,7 +675,8 @@ function renderDrapingSimulation(skinToneRgb, colorCategories) {
     // Hover to preview
     option.addEventListener("mouseenter", () => {
       largeColor.style.backgroundColor = color.hex;
-      colorName.textContent = color.name;
+      largeColor.classList.toggle("avoid-preview", isAvoid);
+      colorName.textContent = isAvoid ? `${color.name} (Avoid)` : color.name;
     });
 
     // Click to select
@@ -684,18 +690,32 @@ function renderDrapingSimulation(skinToneRgb, colorCategories) {
 
       // Update preview
       largeColor.style.backgroundColor = color.hex;
-      colorName.textContent = color.name;
+      largeColor.classList.toggle("avoid-preview", isAvoid);
+      colorName.textContent = isAvoid ? `${color.name} (Avoid)` : color.name;
     });
 
-    colorGrid.appendChild(option);
+    return option;
+  }
+
+  // Populate recommended colors grid
+  recommendedColors.forEach((color, index) => {
+    const option = createColorOption(color, false);
+    recommendedGrid.appendChild(option);
 
     // Select the first color by default
     if (index === 0) {
       largeColor.style.backgroundColor = color.hex;
+      largeColor.classList.remove("avoid-preview");
       colorName.textContent = color.name;
       option.classList.add("selected");
       selectedOption = option;
     }
+  });
+
+  // Populate avoid colors grid
+  avoidColors.forEach((color) => {
+    const option = createColorOption(color, true);
+    avoidGrid.appendChild(option);
   });
 }
 
