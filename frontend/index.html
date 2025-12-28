@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Color Analysis</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🎨 Personal Color Analysis</h1>
+            <p class="subtitle">Discover your seasonal color palette using computer vision and color theory</p>
+        </header>
+
+        <!-- Photo Guidelines -->
+        <details class="guidelines">
+            <summary>📸 Photo Guidelines (Click to expand)</summary>
+            <div class="guidelines-content">
+                <div class="guidelines-section">
+                    <h3>✨ For Best Results:</h3>
+                    <ul>
+                        <li>Use natural daylight (near window, outdoors in shade)</li>
+                        <li>Face the camera directly with a neutral expression</li>
+                        <li>No makeup or minimal makeup</li>
+                        <li>Plain neutral background (white/grey wall) for most accurate results</li>
+                    </ul>
+                </div>
+                <div class="guidelines-section">
+                    <h3>✅ The App Works With:</h3>
+                    <ul>
+                        <li>Photos with cluttered backgrounds (uses Skin Locus method automatically)</li>
+                        <li>Indoor lighting (white balance correction applied)</li>
+                        <li>Various skin tones and ethnicities (algorithm is universal)</li>
+                    </ul>
+                </div>
+                <div class="guidelines-section">
+                    <h3>❌ Avoid:</h3>
+                    <ul>
+                        <li>Colored lighting (red/blue/green bulbs)</li>
+                        <li>Strong shadows across face</li>
+                        <li>Filters or heavy editing</li>
+                        <li>Hats/scarves covering forehead or cheeks</li>
+                    </ul>
+                </div>
+            </div>
+        </details>
+
+        <!-- Upload Section -->
+        <div class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png" hidden>
+                <div class="upload-content">
+                    <div class="upload-icon">📷</div>
+                    <h2>Upload Your Photo</h2>
+                    <p>Click to select or drag and drop</p>
+                    <p class="file-types">Supported: JPG, JPEG, PNG (Max 10MB)</p>
+                </div>
+            </div>
+
+            <div class="white-balance-option">
+                <label>
+                    <input type="checkbox" id="whiteBalanceToggle" checked>
+                    Apply automatic white balance correction
+                </label>
+            </div>
+
+        </div>
+
+        <!-- Loading Spinner -->
+        <div class="loading" id="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Analyzing your photo...</p>
+        </div>
+
+        <!-- Error Message -->
+        <div class="error-message" id="errorMessage" style="display: none;">
+            <span class="error-icon">⚠️</span>
+            <span id="errorText"></span>
+        </div>
+
+        <!-- Results Section -->
+        <div class="results-section" id="resultsSection" style="display: none;">
+            <div class="results-header">
+                <h2>Your Color Analysis Results</h2>
+            </div>
+            
+            <!-- Top Grid: Photo + Summary -->
+            <div class="results-header-grid">
+                <!-- Left: Image -->
+                <div class="image-container">
+                    <img id="uploadedImage" alt="Your photo">
+                </div>
+
+                <!-- Right: Quick Summary -->
+                <div class="results-summary">
+                    <!-- Season Result -->
+                    <div class="season-result">
+                        <h3 id="seasonName">Your Season</h3>
+                        <p id="seasonDescription"></p>
+                        <div class="confidence-bar">
+                            <span>Confidence:</span>
+                            <div class="confidence-meter">
+                                <div class="confidence-fill" id="confidenceFill"></div>
+                            </div>
+                            <span id="confidenceValue">0%</span>
+                        </div>
+                    </div>
+
+                    <!-- Season Probability Breakdown -->
+                    <div class="season-breakdown-section">
+                        <h4>Season Breakdown</h4>
+                        <p class="breakdown-description">How closely you match each season type</p>
+                        <div class="probability-bars" id="probabilityBars">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Skin Tone Swatch -->
+                    <div class="skin-tone-section">
+                        <h4>Detected Skin Undertone</h4>
+                        <div class="skin-tone-display">
+                            <div class="skin-tone-swatch" id="skinToneSwatch"></div>
+                            <span id="skinToneRgb">RGB: (0, 0, 0)</span>
+                        </div>
+                    </div>
+
+                    <!-- White Balance Method Badge -->
+                    <div class="wb-badge" id="wbBadge">
+                        <span class="badge-icon">⚙️</span>
+                        <span id="wbMethod">Method: None</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Full Width: Color Visualizations -->
+            <div class="color-visualizations">
+                <!-- 1. Draping Simulation - Colors next to your skin tone -->
+                <div class="draping-section">
+                    <h4>🎨 See How Colors Look On You</h4>
+                    <p class="section-description">Click or hover over colors to see how they look against your skin tone</p>
+                    <div class="draping-main">
+                        <!-- Large comparison area -->
+                        <div class="draping-comparison">
+                            <div class="draping-large-skin" id="drapingLargeSkin">
+                                <span>Your Skin</span>
+                            </div>
+                            <div class="draping-large-color" id="drapingLargeColor">
+                                <span id="drapingColorName">Select a color</span>
+                            </div>
+                        </div>
+                        <!-- Color selector -->
+                        <div class="draping-selector">
+                            <p class="selector-label">Click a color to compare:</p>
+                            <div class="draping-color-grid" id="drapingColorGrid">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Palette Cards + Do/Don't Grid side by side -->
+                <div class="palette-dodont-row">
+                    <!-- Palette Cards -->
+                    <div class="palette-cards-section">
+                        <h4>📋 Your Color Palette</h4>
+                        <p class="section-description">Organized by how to use each color</p>
+                        <div class="palette-cards-grid">
+                            <div class="palette-card neutrals-card">
+                                <h5>🔲 Neutrals</h5>
+                                <p class="card-hint">Base colors for suits, pants, skirts</p>
+                                <div class="palette-swatches" id="neutralsSwatches"></div>
+                            </div>
+                            <div class="palette-card accents-card">
+                                <h5>✨ Accent Colors</h5>
+                                <p class="card-hint">Statement pieces, tops, accessories</p>
+                                <div class="palette-swatches" id="accentsSwatches"></div>
+                            </div>
+                            <div class="palette-card avoid-card">
+                                <h5>🚫 Colors to Avoid</h5>
+                                <p class="card-hint">These clash with your undertone</p>
+                                <div class="palette-swatches" id="avoidSwatches"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Do/Don't Comparison Grid -->
+                    <div class="dodont-section">
+                        <h4>✓✗ What Works vs What Doesn't</h4>
+                        <p class="section-description">Similar colors with different undertones</p>
+                        <div class="dodont-grid" id="dodontGrid">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Gradient Bars - Full Width -->
+                <div class="gradient-section">
+                    <h4>📊 Your Range In Each Color Family</h4>
+                    <p class="section-description">The highlighted range shows which shades work best for you</p>
+                    <div class="gradient-bars" id="gradientBars">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Styling Recommendations -->
+                <div class="recommendations">
+                    <h4>💡 Styling Tips</h4>
+                    <div id="recommendationsContent"></div>
+                </div>
+            </div>
+
+            <!-- Technical Details (Collapsible) -->
+            <details class="details-section">
+                <summary>🔬 Technical Details</summary>
+                <div class="details-content" id="detailsContent"></div>
+            </details>
+
+            <!-- Debug Section (Only shown in debug mode) -->
+            <div class="debug-section" id="debugSection" style="display: none;">
+                        <h3>🐛 Debug Information</h3>
+                        <p class="debug-description">Visual breakdown of each analysis step to help diagnose issues.</p>
+                        
+                        <!-- Debug Images Grid -->
+                        <div class="debug-images-grid" id="debugImagesGrid"></div>
+                        
+                        <!-- Debug Metadata -->
+                        <details class="debug-metadata-section">
+                            <summary>📊 Detailed Metadata</summary>
+                            <div class="debug-metadata-content">
+                                <!-- Face Detection Metadata -->
+                                <div class="debug-meta-card" id="debugMetaFaceDetection" style="display: none;">
+                                    <h5>Face Detection</h5>
+                                    <div id="debugMetaFaceDetectionContent"></div>
+                                </div>
+                                
+                                <!-- Skin Extraction Metadata -->
+                                <div class="debug-meta-card" id="debugMetaSkinExtraction" style="display: none;">
+                                    <h5>Skin Extraction</h5>
+                                    <div id="debugMetaSkinExtractionContent"></div>
+                                </div>
+                                
+                                <!-- White Balance Metadata -->
+                                <div class="debug-meta-card" id="debugMetaWhiteBalance" style="display: none;">
+                                    <h5>White Balance</h5>
+                                    <div id="debugMetaWhiteBalanceContent"></div>
+                                </div>
+                                
+                                <!-- Color Analysis Metadata -->
+                                <div class="debug-meta-card" id="debugMetaColorAnalysis" style="display: none;">
+                                    <h5>Color Analysis & Classification</h5>
+                                    <div id="debugMetaColorAnalysisContent"></div>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- How It Works Section -->
+        <details class="how-it-works">
+            <summary>🧬 How It Works</summary>
+            <div class="how-content">
+                <h3>The Science Behind Color Analysis</h3>
+                
+                <div class="science-section">
+                    <h4>1. Face Detection & Landmark Mapping</h4>
+                    <p>MediaPipe's Face Mesh detects 468 precise points on your face, allowing us to identify the exact cheek region for skin tone analysis while avoiding eyes, lips, and shadows.</p>
+                </div>
+
+                <div class="science-section">
+                    <h4>2. Intelligent White Balance Correction</h4>
+                    <p><strong>Background Method:</strong> When a neutral background is detected, we use it as a reference to correct lighting.</p>
+                    <p><strong>Skin Locus Method:</strong> For cluttered backgrounds, we use the scientific fact that human skin tones cluster in a specific area of the chromaticity diagram, regardless of ethnicity.</p>
+                </div>
+
+                <div class="science-section">
+                    <h4>3. CIELAB Color Space Analysis</h4>
+                    <p>We convert skin color to CIELAB (L*a*b*) color space:</p>
+                    <ul>
+                        <li><strong>L* (Lightness):</strong> Determines Light vs Deep coloring</li>
+                        <li><strong>b* (Blue-Yellow axis):</strong> Determines Cool vs Warm undertones</li>
+                    </ul>
+                </div>
+
+                <div class="science-section">
+                    <h4>4. Season Classification</h4>
+                    <ul>
+                        <li><strong>Winter:</strong> Cool + Deep (L* ≤ 155, b* ≤ 132)</li>
+                        <li><strong>Summer:</strong> Cool + Light (L* > 155, b* ≤ 132)</li>
+                        <li><strong>Autumn:</strong> Warm + Deep (L* ≤ 155, b* > 132)</li>
+                        <li><strong>Spring:</strong> Warm + Light (L* > 155, b* > 132)</li>
+                    </ul>
+                </div>
+            </div>
+        </details>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Personal Color Analysis | Using MediaPipe & Computer Vision</p>
+        </footer>
+    </div>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>
+
